@@ -1,0 +1,118 @@
+name: Laravel
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.upload.outputs.artifact-id }}
+
+    services:
+      docker:
+        image: docker:latest
+        options: --privileged
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Build and start containers
+        run: |
+          docker-compose -f ./docker-compose.yaml up -d
+          docker-compose -f ./docker-compose.yaml ps
+      - name: Install Dependencies
+        run: docker-compose -f ./docker-compose.yaml exec -T app composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Generate key
+        run: docker-compose -f ./docker-compose.yaml exec -T app php artisan key:generate
+
+      - name: Directory Permissions
+        run: docker-compose -f ./docker-compose.yaml exec -T app chmod -R 777 storage bootstrap/cache
+
+      - name: Create Database
+        run: |
+          docker-compose -f ./docker-compose.yaml exec -T app php artisan db:seed --force
+          docker-compose -f ./docker-compose.yaml exec -T app php artisan cache:clear
+          docker-compose -f ./docker-compose.yaml exec -T app php artisan route:clear
+          docker-compose -f ./docker-compose.yaml exec -T app php artisan config:clear
+          docker-compose -f ./docker-compose.yaml exec -T app php artisan view:clear
+          docker-compose -f ./docker-compose.yaml exec -T app php artisan key:generate
+      - name: Save Docker images as artifacts
+        run: |
+          mkdir -p docker_images
+          docker images --format "{{.Repository}}:{{.Tag}}" | grep t-nsa-800 | while IFS=: read -r repo tag; do
+            docker save -o "docker_images/${repo}_${tag}.tar" "${repo}:${tag}"
+            echo "Saved ${repo}:${tag}"
+          done
+        working-directory: ${{ github.workspace }}
+
+      - name: List Docker images
+        run: docker images
+
+      - name: List contents of docker_images directory
+        run: ls -l docker_images/
+
+      - name: Upload Docker images as artifacts
+        uses: actions/upload-artifact@v4
+        id : upload
+        with:
+          name: docker-images
+          path: docker_images/
+      
+      - name: Output artifact ID
+        run:  echo 'Artifact ID is ${{ steps.upload.outputs.artifact-id }}'
+
+  
+  download-artifacts : 
+    runs-on: ubuntu-latest
+    needs: laravel-tests
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Download Docker images artifact
+        run: |
+          mkdir -p docker_images
+          curl -L -o docker_images/docker-images.zip -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/repos/${{ github.repository }}/actions/artifacts/${{ needs.laravel-tests.outputs.output1 }}/zip"
+          unzip docker_images/docker-images.zip -d docker_images/
+        working-directory: ${{ github.workspace }}
+
+      - name: List contents of docker_images directory
+        run: ls -lah docker_images/
+        working-directory: ${{ github.workspace }}
+
+      - name: Load Docker Images
+        run: |
+          docker load -i docker_images/t-nsa-800_app_latest.tar
+          docker load -i docker_images/t-nsa-800_db_latest.tar
+        working-directory: ${{ github.workspace }}
+
+      - name: Setup SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 40.91.245.183 >> ~/.ssh/known_hosts
+          ssh-keyscan -H 172.201.146.21 >> ~/.ssh/known_hosts
+
+    
+      - name: Execute Ansible Playbook
+        env:
+          DOCKER_IMAGES_PATH: ${{ github.workspace }}/docker_images
+        run: |
+          ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbook/playbook.yaml
+        working-directory: ${{ github.workspace }}
+      
+
+  
