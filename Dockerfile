@@ -1,32 +1,32 @@
-# Utilisez une image Docker officielle pour PHP 7.4 avec Apache
+# Utilize the official Docker image for PHP 7.4 with Apache
 FROM php:7.4-apache
 
-# Installez les extensions PHP nécessaires
+# Install necessary PHP extensions
 RUN docker-php-ext-install pdo_mysql
 
+# Install required tools
 RUN apt-get update && apt-get install -y git unzip p7zip-full
 
-# Installez Composer
-# COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Install Composer
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-# Copiez les fichiers de l'application dans le conteneur
+# Copy the application files into the container
 COPY . /var/www/html/
 
-# Installez les dépendances de l'application
-RUN composer install
+# Install application dependencies
+RUN composer install --verbose
 
+# Adjust permissions for Laravel directories
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 RUN chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
 
-# Modifiez la configuration d'Apache pour pointer vers le répertoire public
+# Modify Apache configuration to point to the public directory
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Activez le module Apache Rewrite
+# Enable the Apache Rewrite module
 RUN a2enmod rewrite
 
-# Exposez le port 80
+# Expose port 80
 EXPOSE 80
