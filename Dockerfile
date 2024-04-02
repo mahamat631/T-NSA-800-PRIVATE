@@ -1,27 +1,30 @@
-# Utilize the official Docker image for PHP 7.4 with Apache
+# Utilisez une image Docker officielle pour PHP 7.4 avec Apache
 FROM php:7.4-apache
 
-# Install necessary PHP extensions, tools, and enable Apache Rewrite module
-RUN apt-get update && \
-    apt-get install -y git unzip p7zip-full && \
-    docker-php-ext-install pdo_mysql && \
-    a2enmod rewrite
+# Installez les extensions PHP nécessaires
+RUN docker-php-ext-install pdo_mysql
 
-# Install Composer
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN apt-get update && apt-get install -y git unzip p7zip-full
 
-# Copy the application files into the container
+# Installez Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Copiez les fichiers de l'application dans le conteneur
 COPY . /var/www/html/
 
-# Install application dependencies
-RUN composer install --verbose && \
-    chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache && \
-    chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
+# Installez les dépendances de l'application
+RUN composer install
 
-# Modify Apache configuration to point to the public directory
+RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+RUN chmod -R 755 /var/www/html/storage /var/www/html/bootstrap/cache
+
+# Modifiez la configuration d'Apache pour pointer vers le répertoire public
 ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf && \
-    sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
+RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
+RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
-# Expose port 80
+# Activez le module Apache Rewrite
+RUN a2enmod rewrite
+
+# Exposez le port 80
 EXPOSE 80
