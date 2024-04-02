@@ -113,6 +113,3 @@ jobs:
         run: |
           ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbook/playbook.yaml
         working-directory: ${{ github.workspace }}
-//      
-
-  
