@@ -1,0 +1,17 @@
+- name: Copy Docker image artifacts
+  hosts: all
+  become: yes
+  vars:
+    ansible_ssh_private_key_file: "./new-key-ssa.pem"
+  tasks:
+    - name: Copy t-nsa-800_app_latest.tar to app_web host
+      ansible.builtin.fetch:
+        src: "{{ artifact_url }}/t-nsa-800_app_latest.tar"
+        dest: "/home/t-nsa-800_app_latest.tar"
+      when: inventory_hostname == 'appweb_host'
+
+    - name: Copy t-nsa-800_db_latest.tar to app_db host
+      ansible.builtin.fetch:
+        src: "{{ artifact_url }}/t-nsa-800_db_latest.tar"
+        dest: "/tmp/t-nsa-800_db_latest.tar"
+      when: inventory_hostname == 'appdatabase_host'

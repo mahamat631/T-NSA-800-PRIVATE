@@ -1,0 +1,14 @@
+# Use the MySQL 5.7 image as the base image
+FROM mysql:5.7
+
+# Set environment variables required for MySQL configuration
+ENV MYSQL_DATABASE=lostopsdb \
+    MYSQL_USER=mysqladmin@mysqlserverops \
+    MYSQL_PASSWORD=H@Sh1CoR3P@ssw0rd \
+    MYSQL_ROOT_PASSWORD=H@Sh1CoR3P@ssw0rd
+
+# Add a volume for persisting data
+VOLUME /var/lib/mysql
+
+# Copy the SSL certificate from host to container (assuming it's needed)
+# COPY /chemin/sur/hote/ca-cert.pem /chemin/dans/conteneur/ca-cert.pem

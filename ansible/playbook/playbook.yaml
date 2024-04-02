@@ -1,0 +1,39 @@
+- name: Deploy Docker Images to App
+  hosts: app_host
+  tasks:
+    - name: Copy Docker Image for App
+      copy:
+        src: "{{ lookup('env', 'DOCKER_IMAGES_PATH') }}/t-nsa-800_app_latest.tar"
+        dest: "/tmp/t-nsa-800_app_latest.tar"
+
+    - name: Load Docker Image for App
+      command: docker load -i /tmp/t-nsa-800_app_latest.tar
+      become: yes
+
+    - name: Run Docker Container for App
+      docker_container:
+        name: application
+        image: "t-nsa-800_app:latest"
+        state: started
+      become: yes
+
+- name: Deploy Docker Images to DB 
+  hosts: db_host
+  tasks:
+    - name: Copy Docker Image for DB
+      copy:
+        src: "{{ lookup('env', 'DOCKER_IMAGES_PATH') }}/t-nsa-800_db_latest.tar"
+        dest: "/tmp/t-nsa-800_db_latest.tar"
+
+    - name: Load Docker Image for DB
+      command: docker load -i /tmp/t-nsa-800_db_latest.tar
+      become: yes
+
+    - name: Run Docker Container for DB
+      docker_container:
+        name: database
+        image: "t-nsa-800_db:latest"
+        state: started
+        published_ports:
+          - "3306:3306"
+      become: yes

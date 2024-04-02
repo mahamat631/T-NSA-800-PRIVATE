@@ -1,0 +1,53 @@
+version: '3'
+services:
+  traefik:
+    image: "traefik:v2.4"
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.metrics.address=:8082"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.entryPoint=metrics"
+    ports:
+      - "80:80"
+      - "8082:8082"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    environment:
+      APP_DEBUG: "true"
+      APP_ENV: "dev"
+      APP_KEY: "base64:DJYTvaRkEZ/YcQsX3TMpB0iCjgme2rhlIOus9A1hnj4="
+      DB_CONNECTION: mysql
+      DB_HOST: mysqlserverops.mysql.database.azure.com
+      DB_PORT: 3306
+      DB_DATABASE: lostopsdb
+      DB_USERNAME: mysqladmin@mysqlserverops
+      DB_PASSWORD: H@Sh1CoR3P@ssw0rd
+      # MYSQL_ATTR_SSL_CA: /chemin/vers/ca-cert.pem
+    depends_on:
+      - db
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app.rule=Host(`localhost`)"
+  db:
+    build:
+      context: .
+      dockerfile: Dockerfile.db 
+    ports:
+      - "3306:3306"
+    restart: always
+    environment:
+      MYSQL_DATABASE: lostopsdb
+      MYSQL_USER: mysqladmin@mysqlserverops
+      MYSQL_PASSWORD: H@Sh1CoR3P@ssw0rd
+      MYSQL_ROOT_PASSWORD: H@Sh1CoR3P@ssw0rd
+    volumes:
+      - ./my.cnf:/etc/mysql/my.cnf
+

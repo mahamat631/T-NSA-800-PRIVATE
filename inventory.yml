@@ -1,0 +1,15 @@
+all:
+  children:
+    appweb:
+      hosts:
+        appweb_host:
+          ansible_host: 20.73.2.234
+      vars:
+        ansible_user: admuser
+
+    appdatabase:
+      hosts:
+        appdatabase_host:
+          ansible_host: 20.73.159.184
+      vars:
+        ansible_user: admuser

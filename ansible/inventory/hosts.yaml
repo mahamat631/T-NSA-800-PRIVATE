@@ -1,0 +1,12 @@
+all:
+  children:
+    app:
+      hosts:
+        app_host:
+          ansible_host: 40.91.245.183
+          ansible_user: admuser
+    database:
+      hosts:
+        db_host:
+          ansible_host: 172.201.146.21
+          ansible_user: admuser
